@@ -1,262 +1,235 @@
-# Skin Lesion and Melanoma Screening System
+# Skin Lesion Classification - Simplified Guide
 
-A PyTorch research project for seven-class skin-lesion classification using the **HAM10000** dermoscopic image dataset. The project compares **VGG-16**, **ResNet-18**, and **EfficientNet-B0**, investigates class-imbalance strategies, and uses **Grad-CAM** to inspect image regions that influence model predictions.
+**Quick reference for building this project step by step.**
 
-> **Research and education only.** This project is not a medical device and must not be used to diagnose, rule out, or make treatment decisions about skin cancer. Model predictions and Grad-CAM visualizations are not substitutes for assessment by a qualified healthcare professional.
+> Research and education only. Not a medical diagnostic tool.
 
-## 1. Project goals
+---
 
-The project has five main requirements:
+## 7 Classes to Predict
 
-1. **Seven-class classification:** use HAM10000 and predict one of its seven diagnostic categories.
-2. **Architecture comparison:** train and evaluate VGG-16, ResNet-18, and EfficientNet-B0 using comparable experimental conditions.
-3. **Class-imbalance strategies:** use focal loss and training-time data augmentation, and evaluate whether they improve results.
-4. **Grad-CAM:** generate class-activation heatmaps for each model pipeline and inspect both successful and failed predictions.
-5. **Interpretability guardrails:** communicate uncertainty and limitations, investigate possible shortcut learning, and avoid presenting model output as a diagnosis.
+| Code | Full Name | Priority |
+|------|-----------|----------|
+| `nv` | Melanocytic nevi | 67% of data (majority class) |
+| `mel` | Melanoma | 11% (most important for screening) |
+| `bkl` | Benign keratosis-like | 11% |
+| `bcc` | Basal cell carcinoma | 5% |
+| `akiec` | Actinic keratoses | 3% |
+| `vasc` | Vascular lesions | 1.5% |
+| `df` | Dermatofibroma | 1% (minority class) |
 
-## 2. Dataset and labels
+**Class imbalance ratio: 63:1** (need focal loss)
 
-HAM10000 contains approximately 10,015 dermoscopic images across seven diagnostic categories:
+---
 
-| Label | Category |
-|---|---|
-| `akiec` | Actinic keratoses and intraepithelial carcinoma |
-| `bcc` | Basal cell carcinoma |
-| `bkl` | Benign keratosis-like lesions |
-| `df` | Dermatofibroma |
-| `mel` | Melanoma |
-| `nv` | Melanocytic nevi |
-| `vasc` | Vascular lesions |
+## Project Pipeline Stages
 
-Use only the permitted HAM10000 dataset for model training and evaluation. Follow the dataset's terms and citation requirements. Keep downloaded dataset files out of Git.
+### ✅ Stage 1: Exploratory Data Analysis (EDA)
+**Status: COMPLETE**
 
-### Data-splitting requirements
+What we learned:
+- 10,015 images across 7 classes
+- Severe imbalance: nv (67%) vs df (1%)
+- **Must split by lesion_id** (not by image)
+- 57 missing age values
+- All images verified on disk
 
-- Create training, validation, and test splits before training.
-- Where lesion identifiers are available, split by **lesion ID**, not merely by image, to reduce leakage from multiple images of the same lesion.
-- Reuse the same split assignments for all models and experiment conditions.
-- Apply augmentation to training data only. Validation and test images must use deterministic preprocessing.
-- Do not use the test set to choose hyperparameters, thresholds, or checkpoints.
-- Record the split-generation seed and save split metadata in `data/splits/`.
+**Notebook:** `notebooks/01_data_inspection.ipynb`
 
-## 3. Models and training strategy
+---
 
-All three models should use a consistent seven-class label mapping and a comparable evaluation protocol.
+### ⏳ Stage 2: Data Preprocessing & Splitting
+**Status: PENDING**
 
-- **ResNet-18:** recommended first implementation because it is a practical baseline and is available in `torchvision`.
-- **EfficientNet-B0:** a compact architecture to compare against ResNet-18.
-- **VGG-16:** a conventional CNN architecture; its original fully connected classifier is comparatively large, so replace the classifier and monitor memory usage.
+**Goal:** Create train/val/test splits without data leakage
 
-Use ImageNet-pretrained weights unless the assignment explicitly requires training from scratch. Replace each original classifier with a seven-output classification head. Document the selected pretrained-weight version and its license/source.
+**Key Rule:** Split by `lesion_id`, not by individual images
 
-### Class-imbalance experiments
+**Tasks:**
+- [ ] Create split by lesion_id (70/15/15 or 80/10/10)
+- [ ] Save split manifests to `data/splits/`
+- [ ] Document random seed used
+- [ ] Verify no lesion appears in multiple splits
 
-Use controlled experiments to understand the contribution of each technique. A recommended experiment matrix is:
+**Files to create:**
+- `src/data/split.py` - split generation
+- `data/splits/train.csv`, `val.csv`, `test.csv`
 
-| Condition | Loss | Training augmentation |
-|---|---|---|
-| Baseline | Cross-entropy | Off |
-| Focal-loss ablation | Focal loss | Off |
-| Augmentation ablation | Cross-entropy | On |
-| Combined | Focal loss | On |
+---
 
-Run the four conditions for each architecture if time and compute permit (12 experiments total). If resources are limited, first establish a baseline for all three models, then prioritize the combined condition and selected ablations.
+### ⏳ Stage 3: Data Loading & Transforms
+**Status: PENDING**
 
-Focal loss changes the contribution of easy and difficult examples; it does **not** itself guarantee balanced class counts. Augmentation adds variation but does **not** guarantee equal class frequencies. Report the observed per-class results rather than assuming either technique helps.
+**Goal:** Build PyTorch Dataset and DataLoader
 
-## 4. Evaluation
+**Tasks:**
+- [ ] Create `src/data/dataset.py` - custom Dataset class
+- [ ] Create `src/data/transforms.py` - train/val transforms
+- [ ] Training transforms: random flip, rotation, color jitter
+- [ ] Validation transforms: resize, normalize only
+- [ ] Test `DataLoader` with batch
 
-The problem statement does not prescribe a particular metric. Report a set of complementary metrics rather than relying on accuracy alone:
+**Important:**
+- Training: augmentation ON
+- Validation/Test: augmentation OFF (deterministic)
+- Image size: 224x224 (standard for pretrained models)
 
-- **Macro F1:** gives each class equal weight in the aggregate.
-- **Balanced accuracy:** averages recall across classes.
-- **Per-class precision and recall:** shows class-specific errors.
-- **Melanoma sensitivity/recall and specificity:** important screening-related measures, reported with appropriate caveats.
-- **Confusion matrix:** reveals which categories the model confuses.
-- **Runtime, parameter count, and model/checkpoint size:** helps compare computational cost.
+---
 
-Use validation results to select checkpoints and tune thresholds. Evaluate the final selected models on the held-out test set once the approach is finalized. State the split method, class counts, random seeds, hardware, and model configuration in the report.
+### ⏳ Stage 4: Model Implementation
+**Status: PENDING**
 
-## 5. Interpretability and guardrails
+**Goal:** Build 3 models with 7-class output heads
 
-Grad-CAM creates a coarse heatmap showing image regions that influence a selected class score. Generate examples for correct and incorrect predictions, including melanoma cases.
+**Tasks:**
+- [ ] `src/models/resnet18.py` - ResNet-18 + 7 outputs
+- [ ] `src/models/vgg16.py` - VGG-16 + 7 outputs  
+- [ ] `src/models/efficientnet_b0.py` - EfficientNet-B0 + 7 outputs
+- [ ] Load ImageNet pretrained weights
+- [ ] Test forward pass: input (B,3,224,224) → output (B,7)
 
-Inspect whether heatmaps overlap the lesion or focus on potential artifacts such as hair, rulers, borders, markings, or image background. A visually plausible heatmap does not prove that a model has learned valid clinical features or that its prediction is correct.
-
-The demo/report should:
-- Label results as experimental model predictions, not diagnoses.
-- Explain that confidence scores are not guaranteed to be calibrated probabilities.
-- Avoid reassuring users that a lesion is benign based on a model result.
-- Clearly communicate dataset and generalization limitations.
-- Encourage professional clinical assessment for medical concerns.
-- Document false negatives and other important failure cases.
-
-Do not claim clinical validation unless an appropriate, independently designed clinical validation study has been conducted.
-
-## 6. Repository structure
-
-```text
-skin-lesion-screening/
-├── configs/
-│   ├── resnet18.yaml
-│   ├── vgg16.yaml
-│   ├── efficientnet_b0.yaml
-│   └── experiment.yaml
-├── data/
-│   ├── raw/                  # Original dataset files; not committed
-│   ├── processed/            # Optional cached/prepared artifacts
-│   └── splits/               # Saved train/validation/test assignments
-├── src/
-│   ├── data/
-│   │   ├── dataset.py        # Dataset and label loading
-│   │   ├── transforms.py     # Training/evaluation transforms
-│   │   └── dataloader.py     # DataLoader construction
-│   ├── models/
-│   │   ├── resnet18.py       # ResNet-18 construction and classifier head
-│   │   ├── vgg16.py          # VGG-16 construction and classifier head
-│   │   └── efficientnet_b0.py# EfficientNet-B0 construction and classifier head
-│   ├── losses/
-│   │   └── focal_loss.py     # Focal-loss implementation
-│   ├── training/
-│   │   └── trainer.py        # Shared train/validation loop and checkpointing
-│   ├── evaluation/
-│   │   ├── metrics.py        # Metrics and per-class results
-│   │   └── plots.py          # Confusion matrices and learning curves
-│   ├── explainability/
-│   │   ├── gradcam.py        # Grad-CAM calculation
-│   │   └── visualization.py  # Heatmap overlays and exports
-│   └── utils/
-│       ├── reproducibility.py# Seeds and deterministic settings where possible
-│       ├── checkpoints.py    # Save/load helpers
-│       └── logging.py        # Run logging helpers
-├── experiments/              # Run configurations and metric logs
-├── checkpoints/              # Saved weights; not committed
-├── outputs/
-│   ├── plots/
-│   ├── confusion_matrices/
-│   └── gradcam/
-├── notebooks/                # Exploration and analysis notebooks
-├── tests/                    # Unit and integration tests
-├── train.py                  # Training entry point
-├── evaluate.py               # Evaluation entry point
-├── predict.py                # Single-image inference entry point
-├── pyproject.toml             # Project metadata and dependencies managed by uv
-├── uv.lock                   # Locked dependency resolution
-├── .python-version            # Python version selected for the project
-├── .gitignore
-├── AGENTS.md
-└── README.md
+**All models must have same interface:**
+```python
+model = create_model('resnet18', num_classes=7, pretrained=True)
+output = model(images)  # shape: [batch_size, 7]
 ```
 
-The tree describes the intended layout; files can be added as implementation proceeds. Keep reusable implementation in `src/`. Use notebooks for exploration rather than making them the only location of core training logic.
+---
 
-### Directory and module responsibilities
+### ⏳ Stage 5: Loss Functions
+**Status: PENDING**
 
-| Path | Purpose |
-|---|---|
-| `configs/` | Model and experiment settings such as image size, batch size, learning rate, loss, augmentation, epochs, and seed. |
-| `data/raw/` | Original HAM10000 files. Keep outside version control. |
-| `data/processed/` | Optional cached data or metadata; avoid saving unnecessary duplicate image copies. |
-| `data/splits/` | Reusable split manifests and split-generation metadata. |
-| `src/data/` | Dataset reading, label mapping, transforms, and batching. |
-| `src/models/` | Constructs each architecture and replaces the original classifier with seven outputs. |
-| `src/losses/` | Custom focal loss; standard cross-entropy can be provided by PyTorch. |
-| `src/training/` | Training loop, validation, optimizer steps, scheduler, early stopping if used, and checkpoint selection. |
-| `src/evaluation/` | Metric calculation, confusion matrices, model comparison, and learning curves. |
-| `src/explainability/` | Grad-CAM and visualization. Target layers may differ between architectures. |
-| `src/utils/` | Small shared utilities such as seeds, checkpoint helpers, and logging. Avoid turning this into a catch-all. |
-| `experiments/` | Per-run configuration snapshots, metrics, histories, and references to artifacts. |
-| `checkpoints/` | Model weights and resumable training states. Store outside Git. |
-| `outputs/` | Generated plots, heatmaps, and report-ready artifacts. |
-| `notebooks/` | Data exploration, debugging, and result analysis. |
-| `tests/` | Checks for labels, output shapes, loss finiteness, split leakage, and Grad-CAM dimensions. |
-| `train.py` | Parses configuration and starts a training run. |
-| `evaluate.py` | Loads a checkpoint and evaluates a specified split. |
-| `predict.py` | Runs inference on an image using the trained model. |
-| `pyproject.toml` | Project metadata, dependency declarations, and development-tool configuration managed by `uv`. |
-| `uv.lock` | Exact resolved dependency versions for repeatable installs. Commit this file. |
-| `.python-version` | Project's selected Python version for `uv`. |
-| `AGENTS.md` | Repository-specific instructions for coding agents and contributors. |
+**Goal:** Implement cross-entropy and focal loss
 
-## 7. Environment and dependency management with uv
+**Tasks:**
+- [ ] `src/losses/focal_loss.py` - focal loss implementation
+- [ ] Support 4 experimental conditions:
+  1. Cross-entropy, no augmentation
+  2. Focal loss, no augmentation
+  3. Cross-entropy, with augmentation
+  4. Focal loss, with augmentation
 
-Use [`uv`](https://docs.astral.sh/uv/) to manage Python versions, the virtual environment, dependencies, and the lockfile. The intended source of truth for dependencies is `pyproject.toml` plus the committed `uv.lock`. Do not maintain a separate `requirements.txt` unless a deployment platform specifically requires one; if one is generated, document how it is kept in sync.
+**Why focal loss:** Handles class imbalance by down-weighting easy examples
 
-### Initial setup (PowerShell)
+---
 
-Install `uv` using its official installation instructions, then create the project:
+### ⏳ Stage 6: Training Loop
+**Status: PENDING**
 
-```powershell
-uv init skin-lesion-screening
-cd skin-lesion-screening
-uv python pin 3.11
-```
+**Goal:** Train models with checkpoint saving
 
-If the repository has already been initialized, do not run `uv init` again. Instead, run the setup commands from the existing project root.
+**Tasks:**
+- [ ] `src/training/trainer.py` - shared train/val loop
+- [ ] `train.py` - entry point script
+- [ ] Config file (YAML) for hyperparameters
+- [ ] Save best checkpoint based on validation loss
+- [ ] Log metrics: loss, accuracy, F1
 
-Add the core dependencies:
+**Hyperparameters to tune:**
+- Learning rate: 1e-4 to 1e-3
+- Batch size: 16 or 32
+- Epochs: 20-50 (with early stopping)
+- Optimizer: Adam
 
-```powershell
-uv add torch torchvision pandas numpy pillow scikit-learn matplotlib seaborn pyyaml tqdm
-uv add --dev pytest ruff
-```
+---
 
-These are starting dependencies, not a guarantee that every version works on every platform. Select a PyTorch/Torchvision combination appropriate to your local CPU or CUDA environment using the official PyTorch installation guidance. After dependency changes, commit both `pyproject.toml` and `uv.lock`.
+### ⏳ Stage 7: Evaluation
+**Status: PENDING**
 
-### Common commands
+**Goal:** Evaluate all models on test set
 
-```powershell
-# Create/sync the environment from project metadata and lockfile
-uv sync
+**Tasks:**
+- [ ] `src/evaluation/metrics.py` - metric calculations
+- [ ] `evaluate.py` - evaluation script
+- [ ] Report required metrics:
+  - Macro F1
+  - Balanced accuracy
+  - Per-class precision/recall
+  - Melanoma sensitivity/specificity
+  - Confusion matrix
+- [ ] Compare 3 architectures
+- [ ] Compare 4 experimental conditions
 
-# Run a training script
-uv run python train.py --model resnet18
+---
+
+### ⏳ Stage 8: Grad-CAM Visualization
+**Status: PENDING**
+
+**Goal:** Generate heatmaps showing what models focus on
+
+**Tasks:**
+- [ ] `src/explainability/gradcam.py` - Grad-CAM implementation
+- [ ] Generate heatmaps for:
+  - Correct predictions (each class)
+  - Incorrect predictions
+  - Melanoma cases (important!)
+- [ ] Check for shortcuts (hair, rulers, borders)
+- [ ] Save visualizations to `outputs/gradcam/`
+
+**Different target layers per architecture!**
+
+---
+
+### ⏳ Stage 9: Documentation & Report
+**Status: PENDING**
+
+**Goal:** Document results and limitations
+
+**Tasks:**
+- [ ] Update README with results
+- [ ] Document guardrails and limitations
+- [ ] Include educational-use disclaimer
+- [ ] Report failure cases
+- [ ] Do NOT claim clinical validation
+
+---
+
+## Quick Commands
+
+```bash
+# Run data inspection
+uv run jupyter notebook notebooks/01_data_inspection.ipynb
+
+# Train a model
+uv run python train.py --model resnet18 --config configs/resnet18.yaml
+
+# Evaluate
+uv run python evaluate.py --checkpoint checkpoints/resnet18_best.pth
 
 # Run tests
-uv run pytest
-
-# Lint the project
-uv run ruff check .
+uv run pytest tests/
 ```
 
-The training command is an example; it works once `train.py` implements the stated CLI. Use `uv run` for project commands so they execute in the managed environment.
+---
 
-### Colab and Kaggle
+## Current Progress Tracker
 
-Notebook runtimes are separate environments and their local files may be temporary. Clone the repository into the runtime, install `uv`, then use `uv sync` where compatible. Confirm the installed Python, PyTorch, Torchvision, and accelerator configuration before training. GPU/CUDA package availability can differ by runtime, so do not assume the local lockfile will work unchanged in every cloud environment. Save checkpoints and important run artifacts to persistent storage.
+| Stage | Status | Notes |
+|-------|--------|-------|
+| 1. EDA | ✅ Done | Class imbalance: 63:1, must split by lesion_id |
+| 2. Splitting | ⏳ Pending | Next priority |
+| 3. Data Loading | ⏳ Pending | Depends on splitting |
+| 4. Models | ⏳ Pending | Start with ResNet-18 |
+| 5. Loss Functions | ⏳ Pending | Focal loss for imbalance |
+| 6. Training | ⏳ Pending | Save checkpoints |
+| 7. Evaluation | ⏳ Pending | All 4 conditions |
+| 8. Grad-CAM | ⏳ Pending | Inspect heatmaps |
+| 9. Documentation | ⏳ Pending | Final report |
 
-## 8. Collaboration workflow
+---
 
-For a two-person team:
+## Key Decisions Made
 
-1. Agree on label mapping, lesion-level split manifests, preprocessing, metrics, and experiment conditions.
-2. Build and test one shared data pipeline before starting long training runs.
-3. Assign model ownership, but share the same training, evaluation, and Grad-CAM interfaces.
-4. Save configuration and metrics for every run so results can be reproduced.
-5. Keep datasets and large model artifacts out of Git; use Git for source code, configuration, tests, and documentation.
-6. Review model comparison and failure cases together before writing conclusions.
+1. **Split by lesion_id** - prevents data leakage from multiple images of same lesion
+2. **Image size: 224x224** - standard for pretrained models
+3. **Use focal loss** - handles 63:1 class imbalance
+4. **4 experimental conditions** - controlled ablation study
+5. **ImageNet pretrained** - faster convergence, better results
 
-Suggested initial ownership: one member establishes the ResNet-18 baseline and shared pipeline; the other prepares EfficientNet-B0 against the agreed interfaces. Add VGG-16 after the pipeline is stable. Rebalance ownership according to experience and available compute.
-
-## 9. Definition of done
-
-The project is ready for submission when:
-
-- All three models train and produce seven-class outputs.
-- The train/validation/test split is documented and leakage checks pass.
-- Focal loss and data augmentation are implemented and their effects are evaluated.
-- All models are evaluated with the same declared metrics and test protocol.
-- Grad-CAM is generated for each architecture, including failure cases.
-- Interpretability and medical-use limitations are visible in the demo/report.
-- Checkpoints, configurations, results, and instructions are organized so another team member can reproduce the experiments.
-
-## 10. Limitations
-
-HAM10000 is a research dataset and may not represent all skin tones, clinical settings, imaging devices, or patient populations. Results on this dataset alone do not establish real-world clinical safety or generalization. The system must be presented as an educational research prototype, not a diagnostic service.
+---
 
 ## References
 
-- HAM10000 dataset: Tschandl, P., Rosendahl, C., & Kittler, H. (2018). *The HAM10000 dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions*. Scientific Data, 5, 180161. https://doi.org/10.1038/sdata.2018.161
-- PyTorch documentation: https://pytorch.org/docs/stable/
-- Torchvision models: https://pytorch.org/vision/stable/models.html
-- uv documentation: https://docs.astral.sh/uv/
+- HAM10000: https://doi.org/10.1038/sdata.2018.161
+- PyTorch: https://pytorch.org/docs/stable/
+- Torchvision: https://pytorch.org/vision/stable/models.html
