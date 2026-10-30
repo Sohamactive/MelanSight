@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-10-30T19:02:03.474882",
+  "total_images": 10015,
+  "total_lesions": 7470,
+  "metadata_checks": {
+    "required_columns_present": true,
+    "missing_columns": [],
+    "null_labels": 0,
+    "duplicate_images": 0,
+    "duplicate_rows": 0
+  },
+  "label_checks": {
+    "expected_classes": [
+      "akiec",
+      "bcc",
+      "bkl",
+      "df",
+      "mel",
+      "nv",
+      "vasc"
+    ],
+    "actual_classes": [
+      "akiec",
+      "bcc",
+      "bkl",
+      "df",
+      "mel",
+      "nv",
+      "vasc"
+    ],
+    "unexpected_classes": [],
+    "missing_classes": [],
+    "all_classes_valid": true
+  },
+  "id_checks": {
+    "null_lesion_ids": 0,
+    "null_image_ids": 0,
+    "unique_lesion_ids": 7470,
+    "unique_image_ids": 10015
+  },
+  "file_checks": {
+    "images_in_part1": 5000,
+    "images_in_part2": 5015,
+    "images_in_metadata": 10015,
+    "missing_on_disk": 0,
+    "extra_on_disk": 0,
+    "all_files_present": true
+  },
+  "integrity_checks": {
+    "sample_checked": 100,
+    "valid_images": 100,
+    "corrupted_images": 0,
+    "corruption_list": []
+  },
+  "consistency_checks": {
+    "inconsistent_lesions": 0,
+    "all_consistent": true
+  },
+  "overall_status": "PASS"
+}
