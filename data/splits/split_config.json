@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-10-31T20:56:20.601644",
+  "random_seed": 42,
+  "test_size": 0.15,
+  "val_size": 0.15,
+  "train_size": 0.7,
+  "lesion_counts": {
+    "total": 7470,
+    "train": 5228,
+    "val": 1121,
+    "test": 1121
+  },
+  "image_counts": {
+    "total": 10015,
+    "train": 7054,
+    "val": 1464,
+    "test": 1497
+  },
+  "class_distribution": {
+    "full": {
+      "nv": 6705,
+      "mel": 1113,
+      "bkl": 1099,
+      "bcc": 514,
+      "akiec": 327,
+      "vasc": 142,
+      "df": 115
+    },
+    "train": {
+      "akiec": 233,
+      "bcc": 365,
+      "bkl": 775,
+      "df": 76,
+      "mel": 777,
+      "nv": 4730,
+      "vasc": 98
+    },
+    "val": {
+      "akiec": 43,
+      "bcc": 72,
+      "bkl": 167,
+      "df": 17,
+      "mel": 168,
+      "nv": 975,
+      "vasc": 22
+    },
+    "test": {
+      "akiec": 51,
+      "bcc": 77,
+      "bkl": 157,
+      "df": 22,
+      "mel": 168,
+      "nv": 1000,
+      "vasc": 22
+    }
+  },
+  "verification": {
+    "no_leakage": true,
+    "stratified": true
+  }
+}
