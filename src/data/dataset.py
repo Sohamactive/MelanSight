@@ -127,7 +127,7 @@ class SkinLesionDataset(Dataset):
 
         # Store transforms
         self.transform = transform
-        self.target_transform = target_transform
+        self.target_transform = target_transform    
 
         # Create class mappings (consistent across all splits)
         self.num_classes = len(self.CLASS_NAMES)
@@ -234,7 +234,7 @@ class SkinLesionDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
 
-        return image, label
+        return image, label # type: ignore
 
     def get_class_name(self, idx: int) -> str:
         """

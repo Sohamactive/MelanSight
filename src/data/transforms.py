@@ -26,6 +26,10 @@ import torch
 from PIL import Image, UnidentifiedImageError
 from torchvision import transforms
 
+
+#shouldn't the ↓ be in __init__.py ???
+
+
 # ImageNet normalization statistics
 # Pretrained models expect inputs normalized with these values
 IMAGENET_MEAN = (0.485, 0.456, 0.406)  # RGB channel means
@@ -57,7 +61,7 @@ def get_train_transforms(
     
     Args:
         image_size: Target image size (default: 224)
-        mean: Normalization mean for each channel
+        mean: Normalization mean for eac channel
         std: Normalization std for each channel
     
     Returns:

@@ -155,7 +155,11 @@ def get_single_loader(
         ...     batch_size=32
         ... )
     """
-    from src.data.transforms import get_val_transforms
+    # Import here to avoid circular imports and handle direct execution
+    try:
+        from src.data.transforms import get_val_transforms
+    except ModuleNotFoundError:
+        from transforms import get_val_transforms
     
     if transform is None:
         transform = get_val_transforms()
@@ -175,64 +179,133 @@ def get_single_loader(
     )
 
 
-# Test when run directly
+# # Test when run directly
+# if __name__ == "__main__":
+#     """Test DataLoaders by creating them and loading one batch."""
+    
+#     print("=" * 60)
+#     print("Testing DataLoaders")
+#     print("=" * 60)
+    
+#     try:
+#         # Create DataLoaders
+#         # Use num_workers=0 on Windows, 4 on Linux/Mac
+#         import sys
+#         num_workers = 0 if sys.platform == "win32" else 4
+        
+#         train_loader, val_loader, test_loader = get_dataloaders(
+#             batch_size=16,
+#             num_workers=num_workers,
+#         )
+        
+#         print("\n" + "-" * 60)
+#         print("Testing Train Loader:")
+#         print("-" * 60)
+        
+#         # Load one batch
+#         train_images, train_labels = next(iter(train_loader))
+        
+#         print(f"  Batch shape: {train_images.shape}")
+#         print(f"  Labels shape: {train_labels.shape}")
+#         print(f"  Image dtype: {train_images.dtype}")
+#         print(f"  Label dtype: {train_labels.dtype}")
+#         print(f"  Value range: [{train_images.min():.3f}, {train_images.max():.3f}]")
+        
+#         print("\n" + "-" * 60)
+#         print("Testing Val Loader:")
+#         print("-" * 60)
+        
+#         val_images, val_labels = next(iter(val_loader))
+        
+#         print(f"  Batch shape: {val_images.shape}")
+#         print(f"  Labels shape: {val_labels.shape}")
+        
+#         print("\n" + "-" * 60)
+#         print("Testing Test Loader:")
+#         print("-" * 60)
+        
+#         test_images, test_labels = next(iter(test_loader))
+        
+#         print(f"  Batch shape: {test_images.shape}")
+#         print(f"  Labels shape: {test_labels.shape}")
+        
+#         print("\n" + "=" * 60)
+#         print("✓ All DataLoader tests passed!")
+#         print("=" * 60)
+#         print("\nReady for training!")
+        
+#     except Exception as e:  # noqa: BLE001
+#         print(f"\n✗ Test failed: {e}")
+#         print("\nMake sure to:")
+#         print("  1. Run notebooks/02_data_validation.ipynb")
+#         print("  2. Run notebooks/03_data_splitting.ipynb")
+#         print("  3. Check that CSV files exist in data/splits/")
 if __name__ == "__main__":
-    """Test DataLoaders by creating them and loading one batch."""
-    
+    import time
+    import sys
+
     print("=" * 60)
-    print("Testing DataLoaders")
+    print("DataLoader Worker Benchmark")
     print("=" * 60)
-    
-    try:
-        # Create DataLoaders
-        # Use num_workers=0 on Windows, 4 on Linux/Mac
-        import sys
-        num_workers = 0 if sys.platform == "win32" else 4
-        
-        train_loader, val_loader, test_loader = get_dataloaders(
-            batch_size=16,
-            num_workers=num_workers,
+
+    # Use the training split for benchmarking
+    csv_path = Path("data/splits/train.csv")
+
+    # Windows: keep multiprocessing protected by this main block
+    worker_options = [0, 4]
+
+    batch_size = 16
+
+    results = {}
+
+    for workers in worker_options:
+        print(f"\nTesting num_workers={workers}")
+
+        loader = get_single_loader(
+            csv_path=csv_path,
+            data_dir=Path("."),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=workers,
         )
-        
-        print("\n" + "-" * 60)
-        print("Testing Train Loader:")
-        print("-" * 60)
-        
-        # Load one batch
-        train_images, train_labels = next(iter(train_loader))
-        
-        print(f"  Batch shape: {train_images.shape}")
-        print(f"  Labels shape: {train_labels.shape}")
-        print(f"  Image dtype: {train_images.dtype}")
-        print(f"  Label dtype: {train_labels.dtype}")
-        print(f"  Value range: [{train_images.min():.3f}, {train_images.max():.3f}]")
-        
-        print("\n" + "-" * 60)
-        print("Testing Val Loader:")
-        print("-" * 60)
-        
-        val_images, val_labels = next(iter(val_loader))
-        
-        print(f"  Batch shape: {val_images.shape}")
-        print(f"  Labels shape: {val_labels.shape}")
-        
-        print("\n" + "-" * 60)
-        print("Testing Test Loader:")
-        print("-" * 60)
-        
-        test_images, test_labels = next(iter(test_loader))
-        
-        print(f"  Batch shape: {test_images.shape}")
-        print(f"  Labels shape: {test_labels.shape}")
-        
-        print("\n" + "=" * 60)
-        print("✓ All DataLoader tests passed!")
-        print("=" * 60)
-        print("\nReady for training!")
-        
-    except Exception as e:  # noqa: BLE001
-        print(f"\n✗ Test failed: {e}")
-        print("\nMake sure to:")
-        print("  1. Run notebooks/02_data_validation.ipynb")
-        print("  2. Run notebooks/03_data_splitting.ipynb")
-        print("  3. Check that CSV files exist in data/splits/")
+
+        # Warm-up: load one batch before measuring
+        iterator = iter(loader)
+        try:
+            next(iterator)
+        except StopIteration:
+            raise RuntimeError("Dataset is empty.")
+
+        # Measure complete dataset iteration
+        start_time = time.perf_counter()
+
+        total_images = 0
+        total_batches = 0
+
+        for images, labels in loader:
+            total_images += images.size(0)
+            total_batches += 1
+
+        elapsed = time.perf_counter() - start_time
+
+        results[workers] = elapsed
+
+        print(f"  Images loaded: {total_images}")
+        print(f"  Batches loaded: {total_batches}")
+        print(f"  Time taken: {elapsed:.2f} seconds")
+
+    print("\n" + "=" * 60)
+    print("BENCHMARK RESULTS")
+    print("=" * 60)
+
+    for workers, elapsed in results.items():
+        print(f"num_workers={workers}: {elapsed:.2f} seconds")
+
+    if results[0] > results[4]:
+        speedup = results[0] / results[4]
+        print(f"\nnum_workers=4 was {speedup:.2f}x faster.")
+    elif results[4] > results[0]:
+        slowdown = results[4] / results[0]
+        print(f"\nnum_workers=4 was {slowdown:.2f}x slower.")
+    else:
+        print("\nBoth configurations took approximately the same time.")
