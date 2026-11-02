@@ -145,18 +145,20 @@ for images, labels in train_loader:
 
 ---
 
-### ⏳ Stage 5: Model Implementation
-**Status: PENDING**
+### 🔶 Stage 5: Model Implementation
+**Status: PARTIAL - VGG-16 done; ResNet-18 and EfficientNet-B0 pending**
+
+Done: `src/models/vgg16.py` (ImageNet `IMAGENET1K_V1` weights, 7-class head returning raw logits, Grad-CAM target layer `features[28]`) and `src/models/__init__.py` exporting the shared `CLASS_NAMES`. Forward shape `[B, 7]` is covered by `tests/test_vgg16_pipeline.py`. There is no generic `create_model` factory yet; VGG-16 uses `create_vgg16()`.
 
 **Goal:** Build 3 models with 7-class output heads
 
 **Tasks:**
 - [ ] `src/models/resnet18.py` - ResNet-18 + 7 outputs
-- [ ] `src/models/vgg16.py` - VGG-16 + 7 outputs  
+- [x] `src/models/vgg16.py` - VGG-16 + 7 outputs  
 - [ ] `src/models/efficientnet_b0.py` - EfficientNet-B0 + 7 outputs
 - [ ] `src/models/__init__.py` - model factory
-- [ ] Load ImageNet pretrained weights
-- [ ] Test forward pass: input (B,3,224,224) → output (B,7)
+- [x] Load ImageNet pretrained weights (VGG-16 only)
+- [x] Test forward pass: input (B,3,224,224) → output (B,7) (VGG-16 only)
 
 **All models must have same interface:**
 ```python
@@ -178,17 +180,19 @@ output = model(images)  # shape: [batch_size, 7]
 
 ---
 
-### ⏳ Stage 6: Loss Functions
-**Status: PENDING**
+### ✅ Stage 6: Loss Functions
+**Status: COMPLETE (implemented and used in the VGG-16 runs)**
+
+`src/losses/focal_loss.py` implements multiclass focal loss on raw logits (gamma=2.0 in the runs, optional per-class alpha not used). Cross-entropy is `torch.nn.CrossEntropyLoss`. A test checks that focal loss with gamma=0 equals cross-entropy. All 4 conditions are selectable in `train.py` (`--loss`, `--augmentation`/`--no-augmentation`). Whether focal loss helps is an empirical question; see the results table below.
 
 **Goal:** Implement cross-entropy and focal loss
 
 **Tasks:**
-- [ ] `src/losses/focal_loss.py` - focal loss implementation
+- [x] `src/losses/focal_loss.py` - focal loss implementation
   - Focus on hard examples
   - Down-weight easy examples
   - Formula: FL = -α(1-p)^γ log(p)
-- [ ] Support 4 experimental conditions:
+- [x] Support 4 experimental conditions:
   1. Cross-entropy, no augmentation
   2. Focal loss, no augmentation
   3. Cross-entropy, with augmentation
@@ -205,18 +209,20 @@ output = model(images)  # shape: [batch_size, 7]
 
 ---
 
-### ⏳ Stage 7: Training Loop
-**Status: PENDING**
+### ✅ Stage 7: Training Loop
+**Status: COMPLETE for VGG-16 (shared loop; other models pending)**
+
+`src/training/trainer.py` provides the shared train/validation loop: Adam, CUDA AMP, per-epoch history, best checkpoint chosen by **validation macro F1**, early stopping (patience 5), atomic checkpoint saves, and `seed_everything`. `train.py` is the CLI entry point (settings are CLI arguments saved to `config.json`; the YAML config files and LR scheduler listed below were not implemented). Run it as described in [docs/vgg16_local_training.md](docs/vgg16_local_training.md).
 
 **Goal:** Train models with checkpoint saving
 
 **Tasks:**
-- [ ] `src/training/trainer.py` - shared train/val loop
+- [x] `src/training/trainer.py` - shared train/val loop
   - Training loop with backpropagation
   - Validation loop (no grad)
   - Metric tracking (loss, accuracy, F1)
   - Checkpoint saving (best model based on val F1)
-- [ ] `train.py` - entry point script
+- [x] `train.py` - entry point script
   - Parse config YAML
   - Initialize model, loss, optimizer
   - Run training
@@ -246,13 +252,15 @@ output = model(images)  # shape: [batch_size, 7]
 
 ---
 
-### ⏳ Stage 8: Evaluation
-**Status: PENDING**
+### 🔶 Stage 8: Evaluation
+**Status: PARTIAL - metrics and VGG-16 test evaluation done; cross-model comparison pending**
+
+`src/evaluation/metrics.py` computes macro F1, balanced accuracy, per-class precision/recall/F1/support, melanoma sensitivity, one-vs-rest melanoma specificity, and the confusion matrix with the fixed class order. Evaluation is currently run by `train.py --evaluate-test` (once per finalized run, on the held-out test split); `evaluate.py` is still an empty placeholder.
 
 **Goal:** Evaluate all models on test set
 
 **Tasks:**
-- [ ] `src/evaluation/metrics.py` - metric calculations
+- [x] `src/evaluation/metrics.py` - metric calculations
   - Macro F1 (equal weight per class)
   - Balanced accuracy
   - Per-class precision/recall
@@ -380,14 +388,14 @@ uv run ruff check .
 | 2. Validation | ✅ Done | `notebooks/02_data_validation.ipynb`, `docs/02_data_validation.md` | All 10,015 images verified |
 | 3. Splitting | ✅ Done | `notebooks/03_data_splitting.ipynb`, `docs/03_data_splitting.md`, `data/splits/*.csv` | Stratified group split, no leakage |
 | 4. Data Loading | ✅ Done | `src/data/*.py` | PyTorch Dataset, transforms, DataLoader |
-| 5. Models | ⏳ **NEXT** | `src/models/*.py` | Start with ResNet-18 |
-| 6. Loss Functions | ⏳ Pending | `src/losses/*.py` | Focal loss for imbalance |
-| 7. Training | ⏳ Pending | `src/training/*.py`, `train.py` | Save checkpoints |
-| 8. Evaluation | ⏳ Pending | `src/evaluation/*.py`, `evaluate.py` | All 4 conditions |
+| 5. Models | 🔶 Partial | `src/models/vgg16.py` | VGG-16 done; ResNet-18, EfficientNet-B0 pending |
+| 6. Loss Functions | ✅ Done | `src/losses/focal_loss.py` | Focal loss + cross-entropy |
+| 7. Training | ✅ Done (VGG-16) | `src/training/trainer.py`, `train.py` | Best checkpoint by val macro F1 |
+| 8. Evaluation | 🔶 Partial | `src/evaluation/metrics.py`, `train.py` | VGG-16 x 4 conditions evaluated; `evaluate.py` empty |
 | 9. Grad-CAM | ⏳ Pending | `src/explainability/*.py` | Inspect heatmaps |
 | 10. Documentation | ⏳ Pending | `README.md`, `REPORT.md` | Final report |
 
-**Progress: 4/10 stages complete (40%)**
+**Progress: 6/10 stages complete or partially complete (Stages 1-4, 6, 7 done; 5 and 8 partial)**
 
 ---
 
@@ -477,6 +485,21 @@ skin-lesion-screening/
 ```
 
 ---
+
+## Local VGG16 training
+
+One model (VGG-16) is trained so far. Measured test-set results (single seed; differences between conditions may be within noise; educational use only, not clinical evidence):
+
+| Condition | Test macro F1 | Balanced acc. | Melanoma sensitivity | Melanoma specificity |
+|---|---|---|---|---|
+| Cross-entropy, no aug | 0.5763 | 0.5663 | 0.4821 | 0.9586 |
+| Focal, no aug | 0.5746 | 0.5648 | 0.7500 | 0.9112 |
+| Cross-entropy, aug | 0.6185 | 0.6237 | 0.5893 | 0.9533 |
+| Focal, aug | 0.6233 | 0.6395 | 0.6071 | 0.9428 |
+
+Grad-CAM, ResNet-18, and EfficientNet-B0 have not been run.
+
+The VGG16 trainer supports the four loss/augmentation conditions, validation macro-F1 checkpoint selection, and one held-out test evaluation per run. Windows environment setup (Conda + uv with a CUDA-enabled PyTorch index), commands, artifacts, and measured run status are documented in [docs/vgg16_local_training.md](docs/vgg16_local_training.md). Only runs listed there as completed have results.
 
 ## References
 

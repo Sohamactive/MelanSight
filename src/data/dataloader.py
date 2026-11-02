@@ -33,6 +33,7 @@ def get_dataloaders(
     batch_size: int = 16,
     num_workers: int = 4,
     pin_memory: bool = True,
+    augmentation: bool = True,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """
     Create DataLoaders for train, validation, and test sets.
@@ -70,7 +71,7 @@ def get_dataloaders(
     train_dataset = SkinLesionDataset(
         csv_path=splits_dir / "train.csv",
         data_dir=data_dir,
-        transform=get_train_transforms(),
+        transform=get_train_transforms() if augmentation else get_val_transforms(),
     )
     
     val_dataset = SkinLesionDataset(

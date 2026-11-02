@@ -52,3 +52,6 @@ mlruns/
 Thumbs.db
 *.swp
 *.swo
+
+# Personal viva notes
+viva.md

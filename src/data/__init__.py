@@ -37,7 +37,9 @@ Example Training Setup:
 """
 
 from pathlib import Path
+from typing import Tuple
 
+# Import main components for easy access
 from src.data.dataset import SkinLesionDataset, get_dataset
 from src.data.transforms import (
     IMAGE_SIZE,
@@ -48,24 +50,27 @@ from src.data.transforms import (
     get_train_transforms,
     get_val_transforms,
 )
+from src.data.dataloader import get_dataloaders, get_single_loader
 
-DATALOADER_AVAILABLE = False
+__version__ = "0.1.0"
 
 __all__ = [
+    # Constants
     "IMAGENET_MEAN",
     "IMAGENET_STD",
     "IMAGE_SIZE",
     # Dataset
     "SkinLesionDataset",
-    "denormalize",
-    # DataLoader (if available)
-    "get_dataloaders",
     "get_dataset",
-    "get_single_loader",
-    "get_test_transforms",
     # Transforms
+    "denormalize",
     "get_train_transforms",
     "get_val_transforms",
+    "get_test_transforms",
+    # DataLoader
+    "get_dataloaders",
+    "get_single_loader",
+    "create_data_loaders",
 ]
 
 
@@ -73,10 +78,28 @@ def create_data_loaders(
     data_dir: Path = Path("."),
     batch_size: int = 16,
     num_workers: int = 4,
-) -> tuple:
-
-    from src.data.dataloader import get_dataloaders
-
+) -> Tuple:
+    """
+    Convenience function to create all data loaders.
+    
+    This is a shortcut for get_dataloaders() with better error handling.
+    
+    Args:
+        data_dir: Project root directory
+        batch_size: Samples per batch
+        num_workers: Parallel loading workers (use 0 on Windows)
+    
+    Returns:
+        Tuple of (train_loader, val_loader, test_loader)
+    
+    Raises:
+        RuntimeError: If data splits don't exist
+    
+    Example:
+        >>> from src.data import create_data_loaders
+        >>> train_loader, val_loader, test_loader = create_data_loaders()
+    """
+    # Check if splits exist
     splits_dir = data_dir / "data" / "splits"
     required_files = ["train.csv", "val.csv", "test.csv"]
 
@@ -90,12 +113,8 @@ def create_data_loaders(
     return get_dataloaders(
         data_dir=data_dir,
         batch_size=batch_size,
-        num_workers=num_workers,    
+        num_workers=num_workers,
     )
-
-
-# Version info
-__version__ = "0.1.0"
 
 
 # Simple test
@@ -105,12 +124,7 @@ if __name__ == "__main__":
     print("Testing Data Module Imports")
     print("=" * 60)
     
-    print("\nImport mode:")
-    if DATALOADER_AVAILABLE:
-        print("  ✓ Running as package (src.data)")
-    else:
-        print("  ⚠ Running directly (__main__)")
-        print("  Note: Import individual modules for testing")
+    print("\nImport mode: package (src.data)")
     
     print("\nAvailable components:")
     available_count = 0
@@ -126,7 +140,4 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     if available_count == len(__all__):
         print("✓ Data module ready!")
-    else:
-        print("⚠ Some components not available")
-        print("  Run as: uv run python -m src.data.dataset")
     print("=" * 60)
