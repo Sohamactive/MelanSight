@@ -34,6 +34,7 @@ import torch.nn as nn
 try:
     from src.models.resnet18 import (
         create_resnet18,
+        CLASS_NAMES,
         get_gradcam_target_layer as get_resnet_gradcam_layer,
         get_model_info as get_resnet_info,
         save_model_checkpoint,
@@ -186,6 +187,7 @@ def get_model_summary(model: nn.Module) -> str:
 
 # Exports
 __all__ = [
+    'CLASS_NAMES',
     # Model creation
     'create_model',
     'get_available_models',

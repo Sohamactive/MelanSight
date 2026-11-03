@@ -117,6 +117,38 @@ Use a small subset for smoke tests, but do not report smoke-test metrics as fina
 - Do not install packages or alter the environment unnecessarily; update `pyproject.toml` and `uv.lock` when dependencies change.
 - Preserve unrelated user changes and inspect Git status before proposing destructive cleanup.
 
+## Completed Work Log
+
+Record of completed stages and models for reference:
+
+### Stage 5: Model Implementation - ResNet-18 ✅
+**Completed:** [Date]
+- Model: `src/models/resnet18.py`
+- Training: 30 epochs on Kaggle T4 GPU (~45 minutes)
+- Best validation accuracy: 85.67%
+- Checkpoint: `checkpoints/resnet18_best.pth` (~43MB)
+- Key decisions:
+  - Xavier initialization for new classifier
+  - Batch size 32 (optimal for T4)
+  - Adam optimizer with ReduceLROnPlateau scheduler
+  - Early stopping (patience=5)
+
+### Stage 6: Loss Functions - Focal Loss ✅
+**Completed:** [Date]
+- Implementation: `src/losses/focal_loss.py`
+- Formula: `FL = -α(1-p)^γ log(p)`
+- Gamma: 2.0 (focuses on hard examples)
+- Alpha: Optional class weights for 63:1 imbalance
+- Tests: Handles imbalance, device-agnostic, validated inputs
+- Integration: Works with PyTorch training loop
+
+### Next: Stage 5 continued
+- [ ] VGG-16 implementation
+- [ ] EfficientNet-B0 implementation
+- [ ] Cross-architecture comparison
+
+---
+
 ## Collaboration and reporting
 
 - Agree on split manifests, label order, preprocessing, metrics, and experiment conditions before members train independently.
